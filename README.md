@@ -18,7 +18,7 @@ A simple load balancer implemented in Go with round-robin request forwarding, he
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/rjp2525/load-balancer.git && cd load-balancer
+git clone git@github.com:rjp2525/load-balancer.git && cd load-balancer
 ```
 
 ### Install Dependencies
