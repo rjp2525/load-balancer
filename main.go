@@ -9,7 +9,7 @@ import (
 
 func main() {
     lb := balancer.NewLoadBalancer(
-        []string{"http://127.0.0.1:8000", "http://127.0.0.1:80"},
+        []string{"http://127.0.0.1:8000", "http://127.0.0.1:8001"},
         balancer.NewOpts().
             Timeout(10 * time.Second).
             MaxConnections(100),
