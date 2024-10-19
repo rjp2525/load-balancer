@@ -2,6 +2,8 @@
 
 A simple load balancer implemented in Go with round-robin request forwarding, health checks and connection pooling. The load balancer forwards requests to backend servers, performs periodic health checks and reuses HTTP connections to optimize performance.
 
+https://github.com/user-attachments/assets/744d8cfc-6f7a-40c1-afa5-ede5bfe3d6a4
+
 ## Features
 
 - **Round-Robin Load Balancing**: Distributes incoming requests across multiple backend servers in a round-robin fashion
