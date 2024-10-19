@@ -6,6 +6,7 @@ import (
     "io"
     "net/http"
     "time"
+	"sync"
 )
 
 type Server struct {
@@ -15,12 +16,23 @@ type Server struct {
 
 type LoadBalancer struct {
     servers []*Server
+	mu      sync.Mutex
     idx     int
+	cp      *ConnectionPool
 }
 
-func NewLoadBalancer(servers []*Server) *LoadBalancer {
+func NewLoadBalancer(urls []string, opts *Opts) *LoadBalancer {
+    servers := make([]*Server, len(urls))
+    for i, url := range urls {
+        servers[i] = &Server{
+            URL:     url,
+            Healthy: true,
+        }
+    }
+
     return &LoadBalancer{
         servers: servers,
+        cp:      NewConnectionPool(opts),
     }
 }
 
@@ -50,6 +62,9 @@ func (lb *LoadBalancer) RunHealthCheck() {
 }
 
 func (lb *LoadBalancer) NextServer() (*Server, error) {
+    lb.mu.Lock()
+    defer lb.mu.Unlock()
+
     for i := 0; i < len(lb.servers); i++ {
         server := lb.servers[lb.idx]
         lb.idx = (lb.idx + 1) % len(lb.servers)
@@ -69,7 +84,8 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    res, err := lb.ForwardRequest(server, r.RequestURI)
+    client := lb.cp.Get(server.URL)
+    res, err := lb.ForwardRequest(client, server, r.RequestURI)
     if err != nil {
         http.Error(w, "Error forwarding request", http.StatusInternalServerError)
         return
@@ -82,14 +98,19 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    w.Write(body)
+    _, err = w.Write(body)
+    if err != nil {
+        http.Error(w, "Error writing response", http.StatusInternalServerError)
+    }
+
+    lb.cp.Push(server.URL, client) // Return the connection to the pool
 }
 
-func (lb *LoadBalancer) ForwardRequest(server *Server, uri string) (*http.Response, error) {
+func (lb *LoadBalancer) ForwardRequest(client *http.Client, server *Server, uri string) (*http.Response, error) {
     fullUrl := server.URL + uri
     fmt.Printf("Forwarding request to: %s\n", fullUrl)
 
-    res, err := http.Get(fullUrl)
+    res, err := client.Get(fullUrl)
     if err != nil {
         return nil, err
     }
